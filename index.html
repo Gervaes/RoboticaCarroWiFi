@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gyronorm@2.0.6/dist/gyronorm.complete.min.js"></script>
+    <title>Teste GyroNorm</title>
+    <script src="http://192.168.1.105:3003/data">
+        function minhacallback(data) {
+
+        }
+    </script>
+</head>
+
+<body>
+
+    <p id="agx"></p>
+    <p id="agy"></p>
+    <p id="agz"></p>
+
+    <h1>Teste de direção</h1>
+    <p id="direcao" style="font-size: 50px"></p>
+    <script>
+        let gn = new GyroNorm();
+        let fw = 0,
+            bw = 0,
+            lt = 0,
+            rt = 0;
+        gn.init()
+            .then(() => {
+                gn.start(function (data) {
+                    document.getElementById('agx').innerHTML = `gx: ${data.dm.gx}`
+                    document.getElementById('agy').innerHTML = `gy: ${data.dm.gy}`
+                    document.getElementById('agz').innerHTML = `gz: ${data.dm.gz}`
+                    fw = 0
+                    bw = 0
+                    lt = 0
+                    rt = 0
+                    let direcao = ''
+                    if (data.dm.gy > -2) {
+                        direcao += 'FRENTE '
+                        fw = 1
+                    }
+                    if (data.dm.gy < -5) {
+                        direcao += 'RÉ '
+                        bw = 1
+                    }
+                    if (data.dm.gx < -3) {
+                        direcao += 'ESQUERDA '
+                        lt = 1
+                    }
+                    if (data.dm.gx > 3) {
+                        direcao += 'DIREITA '
+                        rt = 1
+                    }
+
+                    document.getElementById('direcao').innerHTML = direcao
+                });
+            }).catch(function (e) {
+                console.log('Esse dispositivo n suporta DeviceMotion!')
+            });
+
+        setInterval(function () {
+            $.ajax({
+                url: "http://192.168.1.105:3003/data",
+                dataType: "jsonp",
+                cache: false,
+                data: {
+                    fw,
+                    bw,
+                    lt,
+                    rt
+                }
+            }).done(() => {
+                console.log('teste!')
+            });
+        }, 2000)
+    </script>
+</body>
+
+</html>

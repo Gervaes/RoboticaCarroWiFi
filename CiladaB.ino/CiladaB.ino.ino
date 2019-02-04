@@ -9,11 +9,11 @@ int fw=0,bw=0,lt=0,rt=0;
 int velEsq,velDir,vel=75;
 bool y=HIGH;
 bool debug = true;
-
-SoftwareSerial ESP(10, 9); //TX, RX
-
 unsigned long prevMillis = 0;
 const long waitMillis = 5000; //ms
+char c[4];
+
+SoftwareSerial ESP(10, 9); //TX, RX
 
 void setup () {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -24,97 +24,93 @@ void setup () {
  
   ESP.begin(9600);
   Serial.begin(9600);
-  
-  Serial.println("Testando comando AT");
-  SendData("AT",2000,debug);
-  Serial.println("Resetando modulo");
-  SendData("AT+RST",2000,debug);
-  Serial.println("Mudando baudrate");
-  SendData("AT+CIOBAUD=9600",2000,debug);
-  
-  Serial.println("softAP+station mode");
+  SendData("AT+RST",1000,debug);
+  SendData("AT+CIOBAUD=9600",1000,debug);
   SendData("AT+CWMODE=3",1000,debug);
-
-  /*
-  Serial.println("connecting...");
-  SendData("AT+CWJAP=\"OnePlus5\",\"noisnois\"",10000,debug);
-  */
-  Serial.println("connecting...");
-  SendData("AT+CWJAP=\"Guilherme-2.4G\",\"abc13579\"",10000,debug);
-  
-  Serial.println("ip info");
+  //SendData("AT+CWJAP=\"OnePlus5\",\"noisnois\"",5000,debug);
+  SendData("AT+CWJAP=\"Guilherme-2.4G\",\"abc13579\"",5000,debug);
   SendData("AT+CIFSR",5000,debug);
-  
-  Serial.println("multiple connections");
   SendData("AT+CIPMUX=1",1000,debug);
-  
-  Serial.println("opening connection...");
-  SendData("AT+CIPSTART=4,\"UDP\",\"192.168.4.2\",2222,1112,0",10000,debug);
-
+  SendData("AT+CIPSTART=4,\"UDP\",\"192.168.1.102\",2222,1112,0",5000,debug);
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void loop () {
-  String msg="";
   if(ESP.available()) {
     if(ESP.find("+IPD,")) {
-      if(ESP.find("fw=")) {
-        char c[1];
-        ESP.readBytes(c,1);
+      if(ESP.find("p=")) {
+        velEsq = 0;
+        velDir = 0;
+        ESP.readBytes(c,4);
         fw = c[0]-48; 
       }
-      if(ESP.find("bw=")) {
-        char c[1];
-        ESP.readBytes(c,1);
-        bw = c[0]-48; 
-      }
-      if(ESP.find("lt=")) {
-        char c[1];
-        ESP.readBytes(c,1);
-        lt = c[0]-48; 
-      }
-      if(ESP.find("rt=")) {
-        char c[1];
-        ESP.readBytes(c,1);
-        rt = c[0]-48; 
-      }
     }
-    velEsq = 0;
-    velDir = 0;
-    if(fw==1) {
-      Serial.println("FRENTE");
-        y = HIGH;
-       velEsq+=vel;
-      velDir+=vel;
-      fw=0;
-      }
-    if(bw==1) {
-           Serial.println("RÉ");
-      y = LOW;
-      velEsq+=vel;
-      velDir+=vel;
-      bw=0;
-    }
-    if(lt==1) {
-           Serial.println(" ESQUERDA");
-      velDir+=10;
-      velEsq-=15;
-      lt=0;
-    }
-    if(rt==1) {
-           Serial.println(" DIREITA");
-      velEsq+=10;
-      velDir-=15;
-      rt=0;
-    }
+    defineVelocidade();
     Serial.println();
     ESP.readString();
   }
-  
-  digitalWrite(DirDig,y); 
+  anda();
+}
+
+void defineVelocidade() {
+  if(c[0]-48 == 1) {
+    Serial.println("FRENTE");
+    y = HIGH;  
+    velEsq+=vel;
+    velDir+=vel;
+    c[0]=48;
+  }
+  if(c[1]-48 == 1) {
+    Serial.println("RÉ");
+    y = LOW;
+    velEsq+=vel;
+    velDir+=vel;
+    c[1]=48;
+  }
+  if(c[2]-48 == 1) {
+    Serial.println(" ESQUERDA");
+    velDir+=10;
+    if(velEsq==75)
+      velEsq-=15;
+    c[2]=48;
+  }
+  if(c[3]-48 == 1) {
+    Serial.println(" DIREITA");
+    velEsq+=10;
+    if(velDir==75)
+      velDir-=15;
+    c[3]=48;
+  }
+}
+
+double proximidade() {
+  double valorVolts = analogRead(A0) * 0.0048828125;
+  double distancia = 4800/(valorVolts*200 - 20 );
+  return distancia;
+}
+
+void anda() {
+  if(proximidade() > 10) {
+    Serial.println("maior que 10!");
+    digitalWrite(DirDig,y); 
     analogWrite(DirPWM,velDir);
     digitalWrite(EsqDig,y); 
     analogWrite(EsqPWM,velEsq);
+  } else {
+    if(velEsq==vel && velDir==vel) {
+      Serial.println("pra frente n anda!");
+      digitalWrite(DirDig,y); 
+      analogWrite(DirPWM,0);
+      digitalWrite(EsqDig,y); 
+      analogWrite(EsqPWM,0);
+    } else {
+      Serial.println("lados ou ré!");
+      digitalWrite(DirDig,y); 
+      analogWrite(DirPWM,velDir);
+      digitalWrite(EsqDig,y); 
+      analogWrite(EsqPWM,velEsq);
+    }
+  }
 }
 
 String SendData(String command, const int timeout, boolean debug)

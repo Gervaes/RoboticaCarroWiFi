@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gyronorm@2.0.6/dist/gyronorm.complete.min.js"></script>
     <title>Teste GyroNorm</title>
-    <script src="http://192.168.1.105:3003/data">
+    <script src="http://192.168.1.102:3003/data">
         function minhacallback(data) {
 
         }
@@ -25,6 +25,7 @@
     <p id="direcao" style="font-size: 50px"></p>
     <script>
         let gn = new GyroNorm();
+        let anterior = ''
         let fw = 0,
             bw = 0,
             lt = 0,
@@ -64,19 +65,22 @@
             });
 
         setInterval(function () {
-            $.ajax({
-                url: "http://192.168.1.105:3003/data",
-                dataType: "jsonp",
-                cache: false,
-                data: {
-                    fw,
-                    bw,
-                    lt,
-                    rt
-                }
-            }).done(() => {
-                console.log('teste!')
-            });
+            if (anterior != `${fw}${bw}${lt}${rt}`) {
+                $.ajax({
+                    url: "http://192.168.1.102:3003/data",
+                    dataType: "jsonp",
+                    cache: false,
+                    data: {
+                        fw,
+                        bw,
+                        lt,
+                        rt
+                    }
+                }).done(() => {
+                    console.log('teste!')
+                });
+                anterior = `${fw}${bw}${lt}${rt}`
+            }
         }, 2000)
     </script>
 </body>
